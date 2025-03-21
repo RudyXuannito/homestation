@@ -14,8 +14,6 @@ services:
       - ./api:/api
       - ./static:/api/static
       - ./templates:/api/templates
-    depends_on:
-      - nginx
     networks:
       - dev
   
