@@ -1,5 +1,6 @@
 version: '3.8'
-
+networks:
+  dev:
 services:
   api:
     build: ./api
@@ -15,6 +16,8 @@ services:
       - ./templates:/api/templates
     depends_on:
       - nginx
+    networks:
+      - dev
   
   nginx:
     image: nginx:latest
@@ -22,6 +25,8 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - './nginx.conf:/etc/nginx/nginx.conf'
     depends_on:
       - api
+    networks:
+      - dev
