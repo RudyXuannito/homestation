@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  api:
+    build: ./api
+    working_dir: /api
+    platform: linux/arm64
+    container_name: fastapi-api
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./db:/data  # Монтируем папку с базой данных
+      - ./api:/api
+      - ./static:/api/static
+      - ./templates:/api/templates

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="/static/js/main.js"></script>
+    <style>
+        body {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #f8f9fa;
+        }
+        .sidebar {
+            width: 250px;
+            background: #343a40;
+            color: white;
+            padding: 20px;
+        }
+        .sidebar a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 10px;
+            margin: 5px 0;
+        }
+        .sidebar a:hover {
+            background: #495057;
+        }
+        .content {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+        <h2>Menu</h2>
+        <a href="#" onclick="showSection('home')">Home</a>
+        <a href="#" onclick="showSection('cameras')">Cameras</a>
+        <a href="#" onclick="showSection('sensors')">Sensors</a>
+        <a href="/logout">Exit</a>
+    </div>
+    <div class="content">
+        <div id="home" class="content-section">
+            <h1>Welcome, {{ username }}!</h1>
+            <p>Manage your smart home system easily.</p>
+        </div>
+        <div id="cameras" class="content-section" style="display: none;">
+            <h2>Cameras</h2>
+            <div>
+                <img src="/video" alt="Camera 1" class="img-fluid" style="max-width: 400px;">
+                <button onclick="toggleLED(1)" class="btn btn-primary">LED ON</button>
+                <button onclick="toggleLED(0)" class="btn btn-danger">LED OFF</button>
+            </div>
+        </div>
+        <div id="sensors" class="content-section" style="display: none;">
+            <h2>Sensors</h2>
+            <ul>
+                {% for sensor in sensors %}
+                <li>{{ sensor.sensor_name }} - {{ sensor.value }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+</body>
+
+</html>
