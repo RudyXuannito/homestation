@@ -6,6 +6,7 @@ WORKDIR /api
 COPY . /api
 RUN pip install --no-cache-dir fastapi uvicorn
 #
+RUN pip install --no-cache-dir fastapi uvicorn gunicorn
 RUN pip install --no-cache-dir python-multipart
 RUN pip install --no-cache-dir passlib[bcrypt]
 RUN pip install --no-cache-dir opencv-python
@@ -15,4 +16,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 ENV PYTHONPATH="/" 
 #
 # Указываем команду для запуска
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
+#CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "5000"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000", "main:app"]
