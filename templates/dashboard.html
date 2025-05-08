@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer"/>
     <script src="/static/js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body {
             display: flex;
@@ -34,23 +36,175 @@
             padding: 20px;
             overflow-y: auto;
         }
+        .sensor-block {
+          border: 1px solid #ccc;
+          border-radius: 12px;
+          padding: 15px;
+          width: 150px;
+          text-align: center;
+          background: #f9f9f9;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+      
+        .thermometer {
+          height: 120px;
+          width: 30px;
+          background: #eee;
+          border-radius: 15px;
+          margin: 10px auto;
+          position: relative;
+          overflow: hidden;
+        }
+      
+        .thermometer-fill {
+          position: absolute;
+          bottom: 0;
+          width: 100%;
+          background: red;
+          transition: height 0.5s;
+        }
+      
+        .humidity {
+          font-size: 1.2em;
+          margin-top: 10px;
+        }
+      
+        .sensor-name {
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        
+        .status-text {
+          margin-top: 80px;
+        }
+        
+        .water-status {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-top: 10px;
+        }
+        
+        .droplet-icon {
+          font-size: 48px;
+          margin-bottom: 5px;
+        }
+        
+        /* Состояние: Опасность */
+        .water-danger .droplet-icon {
+          color: darkred;
+          animation: shake 0.4s infinite;
+        }
+        
+        /* Состояние: Вода обнаружена */
+        .water-detected .droplet-icon {
+          color: royalblue;
+          animation: shake 0.8s infinite;
+        }
+        
+        /* Состояние: Сухо */
+        .water-ok .droplet-icon {
+          color: green;
+          animation: bounce 1s infinite;
+        }
+        
+        /* Неизвестное состояние */
+        .water-unknown .droplet-icon {
+          color: gray;
+          animation: none;
+        }
+        
+        /* Анимации */
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-5px); }
+        }
+        
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-2px); }
+          75% { transform: translateX(2px); }
+        }
+        .delete-button {
+          background: none;
+          border: none;
+          color: #dc3545;
+          font-size: 18px;
+          margin-left: 10px;
+          cursor: pointer;
+          float: right;
+        }
+        
+        .delete-button:hover {
+          color: #a71d2a;
+        }
+        .sensor-header {
+          position: relative;
+          padding-right: 0px; /* чтобы название не налезало на кнопку */
+          font-weight: bold;
+          font-size: 18px;
+          margin-bottom: 5px;
+        }
+        
+       .delete-button {
+          position: absolute;
+          top: -10px;
+          right: -5px;
+          background: none;
+          border: none;
+          color: black;
+          font-size: 18px;
+          cursor: pointer;
+          z-index: 10;
+          padding: 0;
+        }
+        
+        .delete-button:hover {
+          color: #a71d2a;
+        }
     </style>
 </head>
 <body>
 <div class="sidebar">
-        <h2>Menu</h2>
-        <a href="#" onclick="showSection('home')">Home</a>
-        <a href="#" onclick="showSection('cameras')">Cameras</a>
-        <a href="#" onclick="showSection('sensors')">Sensors</a>
-        <a href="/logout">Exit</a>
+        <h2>Меню</h2>
+        <a href="#" onclick="showSection('home')">Дом</a>
+        <a href="#" onclick="showSection('cameras')">Камеры</a>
+        <a href="#" onclick="showSection('sensors')">Сенсоры</a>
+        <a href="#" onclick="showSection('addsensors')">Добавить сенсоры</a>
+        <a href="/logout">Выход</a>
     </div>
     <div class="content">
         <div id="home" class="content-section">
-            <h1>Welcome, {{ username }}!</h1>
-            <p>Manage your smart home system easily.</p>
+            <h1>Привет, {{ username }}!</h1>
+            <p>Управляй своим домом с легкостью.</p>
+            <div style="max-width: 800px; margin: 0 auto; text-align: justify;">
+            <p>
+              Эта система умного дома предназначена для мониторинга и управления различными устройствами и датчиками прямо из браузера.
+              Вы можете следить за камерами наблюдения, получать данные с температурных и водяных сенсоров, а также управлять освещением.
+            </p>
+        
+            <h3>Что умеет система:</h3>
+            <ul>
+              <li>Просмотр видеопотока с камер</li>
+              <li>Отображение температуры и влажности в реальном времени</li>
+              <li>Оповещения о протечке воды</li>
+              <li>Управление освещением через ESP32-CAM</li>
+            </ul>
+        
+            <h3>Как добавить новый датчик:</h3>
+            <ol>
+              <li>Перейдите во вкладку <strong>"Добавить сенсоры"</strong> в меню слева</li>
+              <li>Заполните поля: <em>имя</em>, <em>URL устройства</em> и <em>тип датчика</em></li>
+              <li>Нажмите <strong>"Добавить"</strong>. Датчик появится во вкладке <strong>"Сенсоры"</strong></li>
+            </ol>
+        
+            <p style="margin-top: 20px;">
+              Вы можете подключать собственные устройства на базе <strong>ESP8266</strong> или <strong>ESP32</strong>, настроив их так, чтобы они отправляли данные в формате JSON по указанному адресу.
+            </p>
+          </div>
         </div>
         <div id="cameras" class="content-section" style="display: none;">
-            <h2>Cameras</h2>
+            <h2>Камеры</h2>
             <div>
                 <img src="/video" alt="Camera 1" class="img-fluid" style="max-width: 400px;">
                 <button onclick="toggleLED(1)" class="btn btn-primary">LED ON</button>
@@ -58,15 +212,89 @@
             </div>
         </div>
         <div id="sensors" class="content-section" style="display: none;">
-            <h2>Sensors</h2>
-            <ul>
-                {% for sensor in sensors %}
-                <li>{{ sensor.sensor_name }} - {{ sensor.value }}</li>
-                {% endfor %}
-            </ul>
+            <h2>Сенсоры</i></i></h2>
+           <!-- <canvas id="sensorChart" width="600" height="300"></canvas> График-->
+             <div id="sensor-container" style="display: flex; gap: 20px; flex-wrap: wrap;"></div>
+        </div>
+        <div id="addsensors" class="content-section" style="display: none;">
+            <h1>Добавление нового сенсора</h1>
+            <!--<form action="/addsensor" method="post">
+                <input type="text" name="name" placeholder="Name" required>
+                <input type="text" name="url" placeholder="Url" required>
+                <button type="submit">Add</button>
+            </form> -->
+            <form id="add-sensor-form">
+              <input type="text" id="sensor-name" placeholder="Имя" required>
+              <input type="text" id="sensor-url" placeholder="Url" required>
+              <select id="sensor-type" required>
+                <option value="tandh">Датчик температуры и влажности</option>
+                <option value="water">Датчик воды</option>
+              </select>
+              <button type="submit">Добавить</button>
+            </form>
+            <div id="add-sensor-message" style="color: green; margin-top: 10px;"></div>
         </div>
     </div>
 
 </body>
+<script>
+    const ctx = document.getElementById('sensorChart').getContext('2d');
+    const sensorChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],  // Timestamps
+            datasets: [
+                {
+                    label: 'Temperature (°C)',
+                    data: [],
+                    borderColor: 'red',
+                    fill: false
+                },
+                {
+                    label: 'Humidity (%)',
+                    data: [],
+                    borderColor: 'blue',
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            scales: {
+                x: {
+                    title: { display: true, text: 'Time' }
+                },
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+
+    function fetchAndUpdate() {
+        fetch('/api/sensors')
+            .then(res => res.json())
+            .then(data => {
+                const now = new Date().toLocaleTimeString();
+                const temp = data[0]?.temperature ?? null;
+                const hum = data[0]?.humidity ?? null;
+
+                if (sensorChart.data.labels.length > 20) {
+                    sensorChart.data.labels.shift();
+                    sensorChart.data.datasets[0].data.shift();
+                    sensorChart.data.datasets[1].data.shift();
+                }
+
+                sensorChart.data.labels.push(now);
+                sensorChart.data.datasets[0].data.push(temp);
+                sensorChart.data.datasets[1].data.push(hum);
+                sensorChart.update();
+            })
+            .catch(err => console.error("Sensor fetch error:", err));
+    }
+
+    fetchAndUpdate();               // initial load
+    setInterval(fetchAndUpdate, 10000); // every 10s
+</script>
+
 
 </html>

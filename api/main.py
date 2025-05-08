@@ -17,7 +17,7 @@ import requests
 
 app = FastAPI()
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="templates", auto_reload=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Создание базы данных
@@ -114,50 +114,127 @@ async def dashboard(request: Request):
     
         conn = get_db()
         cursor = conn.cursor()
+        conn.row_factory = sqlite3.Row  # <--- ВАЖНО!
+        #cursor.execute("SELECT * FROM sensors_data")
+        #sensors_name = cursor.fetchall()
         
-        cursor.execute("SELECT * FROM sensor_data")
-        sensors = cursor.fetchall()
-        
-        # Пример данных для камер (можете расширить для реальных данных)
         cameras = [
             {"id": 1, "name": "Camera 1", "url": "http://192.168.31.91/mjpeg/1"},
             {"id": 2, "name": "Camera 2", "url": "http://192.168.31.92/mjpeg/1"},
         ]
+        cursor.execute("SELECT sensor_name, value FROM sensor_data")
+        sensors = cursor.fetchall()
+        #conn.close()
+    
+        sensor_readings = []
+        for name, url in sensors:
+            try:
+                r = requests.get(url, timeout=3)
+                data = r.json()
+                sensor_readings.append({
+                    "name": name,
+                    "temperature": data.get("temperature"),
+                    "humidity": data.get("humidity")
+                })
+            except Exception as e:
+                sensor_readings.append({
+                    "name": name,
+                    "temperature": "error",
+                    "humidity": "error"
+                })
+
 
         conn.close()
         
         username = serializer.loads(session)
         return templates.TemplateResponse(
-            "dashboard.html", {"request": request, "username": username, "cameras": cameras, "sensors": sensors}
+            "dashboard.html", {"request": request, "username": username, "cameras": cameras, "sensors": sensor_readings}
         )
     except Exception:
         raise HTTPException(status_code=403, detail="Invalid session")
 
+@app.get("/api/sensors")
+async def get_sensor_data():
+    conn = get_db()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT sensor_name, value, value1 FROM sensor_data")
+    sensors = cursor.fetchall()
+    conn.close()
+
+    all_sensors = []
+
+    for name, url, type_ in sensors:
+        if type_ == 'tandh':
+            try:
+                r = requests.get(url, timeout=10)
+                data = r.json()
+                all_sensors.append({
+                    "name": name,
+                    "type": "tandh",
+                    "temperature": data.get("temperature"),
+                    "humidity": data.get("humidity")
+                })
+            except Exception:
+                all_sensors.append({
+                    "name": name,
+                    "type": "tandh",
+                    "temperature": None,
+                    "humidity": None
+                })
+        elif type_ == 'water':
+            try:
+                r = requests.get(url, timeout=10)
+                data = r.json()
+                all_sensors.append({
+                    "name": name,
+                    "type": "w",
+                    "water": data.get("water")
+                })
+            except Exception:
+                all_sensors.append({
+                    "name": name,
+                    "type": "w",
+                    "water": None
+                })
+    return  all_sensors#, sensor_readingswater
+
+@app.delete("/delete_sensor/{sensor_name}")
+async def delete_sensor(sensor_name: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM sensor_data WHERE sensor_name = ?", (sensor_name,))
+    conn.commit()
+    conn.close()
+    return {"message": "Sensor deleted"}
+
 # Добавление сенсора
-@app.post("/add_sensor", response_class=HTMLResponse)
-async def add_sensor(
-    request: Request,
-    sensor_name: str = Form(...),
-    sensor_address: str = Form(...),
-):
+@app.post("/addsensor")
+async def addsensor(request: Request):
+    data = await request.json()
+    name = data.get("name")
+    url = data.get("url")
+    type_ = data.get("type_")
+
+    if not all([name, url, type_]):
+        return JSONResponse(status_code=400, content={"message": "Неверные данные"})
+
     conn = get_db()
     cursor = conn.cursor()
 
     try:
         cursor.execute(
-            "INSERT INTO sensor_data (sensor_name, value) VALUES (?, ?)",
-            (sensor_name, sensor_address),
+            "INSERT INTO sensor_data (sensor_name, value, value1) VALUES (?, ?, ?)",
+            (name, url, type_)
         )
         conn.commit()
     except sqlite3.IntegrityError:
-        return templates.TemplateResponse(
-            "error.html",
-            {"request": request, "message": "Sensor already exists"},
-        )
+        conn.close()
+        return JSONResponse(status_code=400, content={"message": "Сенсор уже существует"})
     finally:
         conn.close()
 
-    return RedirectResponse("/dashboard", status_code=303)
+    return {"message": "Сенсор добавлен успешно"}
     
 
 # Выход из системы
@@ -186,7 +263,7 @@ async def control_led(request: Request):
         if state is None:
             return JSONResponse(content={"message": "Ошибка: отсутствует state"}, status_code=400)
 
-        response = requests.get("http://192.168.31.91/control", params={"state": state})
+        response = requests.get("http://192.168.31.92/control", params={"state": state})
 
         if response.status_code == 200:
             return JSONResponse(content={"message": "LED state updated"}, status_code=200)
@@ -199,7 +276,7 @@ async def control_led(request: Request):
         
 @app.get("/video")
 def video_feed():
-    esp32_url = "http://192.168.31.91/mjpeg/1"
+    esp32_url = "http://192.168.31.92/mjpeg/1"
     cap = cv2.VideoCapture(esp32_url)
 
     def generate():
