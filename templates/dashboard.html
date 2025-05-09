@@ -45,81 +45,95 @@
           background: #f9f9f9;
           box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-      
-        .thermometer {
-          height: 120px;
-          width: 30px;
-          background: #eee;
-          border-radius: 15px;
-          margin: 10px auto;
-          position: relative;
-          overflow: hidden;
+
+        .sensor-block-tandh {
+          width: 240px;
         }
-      
-        .thermometer-fill {
+
+        .dual-meters {
+          display: flex;
+          justify-content: space-around;
+          align-items: flex-end;
+          gap: 10px;
+          margin-top: 10px;
+        }
+
+        .meter {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: 40px;
+          height: 140px;
+          position: relative;
+          background: #eee;
+          border-radius: 10px;
+          overflow: hidden;
+          border: 1px solid #ccc;
+        }
+	
+        .thermometer-fill,
+        .hygrometer-fill {
           position: absolute;
           bottom: 0;
           width: 100%;
-          background: red;
-          transition: height 0.5s;
+          transition: height 0.5s ease;
         }
-      
+
+        .thermometer-fill {
+          background: red;
+        }
+
+        .hygrometer-fill {
+          background: blue;
+        }
+
+        .meter-label {
+          margin-top: 150px;
+          font-size: 14px;
+          text-align: center;
+        }
+
         .humidity {
           font-size: 1.2em;
           margin-top: 10px;
         }
-      
         .sensor-name {
           font-weight: bold;
           margin-bottom: 5px;
         }
-        
         .status-text {
           margin-top: 80px;
         }
-        
         .water-status {
           display: flex;
           flex-direction: column;
           align-items: center;
           margin-top: 10px;
         }
-        
         .droplet-icon {
           font-size: 48px;
           margin-bottom: 5px;
         }
-        
-        /* Состояние: Опасность */
         .water-danger .droplet-icon {
           color: darkred;
           animation: shake 0.4s infinite;
         }
-        
-        /* Состояние: Вода обнаружена */
         .water-detected .droplet-icon {
           color: royalblue;
           animation: shake 0.8s infinite;
         }
-        
-        /* Состояние: Сухо */
         .water-ok .droplet-icon {
           color: green;
           animation: bounce 1s infinite;
         }
-        
-        /* Неизвестное состояние */
         .water-unknown .droplet-icon {
           color: gray;
           animation: none;
         }
-        
-        /* Анимации */
         @keyframes bounce {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-5px); }
         }
-        
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           25% { transform: translateX(-2px); }
@@ -134,19 +148,17 @@
           cursor: pointer;
           float: right;
         }
-        
         .delete-button:hover {
           color: #a71d2a;
         }
         .sensor-header {
           position: relative;
-          padding-right: 0px; /* чтобы название не налезало на кнопку */
+          padding-right: 0px;
           font-weight: bold;
           font-size: 18px;
           margin-bottom: 5px;
         }
-        
-       .delete-button {
+        .delete-button {
           position: absolute;
           top: -10px;
           right: -5px;
@@ -158,9 +170,29 @@
           z-index: 10;
           padding: 0;
         }
-        
         .delete-button:hover {
           color: #a71d2a;
+        }
+        #modalCameraImage {
+          width: 100%;
+          max-height: 80vh;
+          object-fit: contain;
+        }
+        .camera-header {
+          position: relative;
+        }
+        
+        .delete-button {
+          position: absolute;
+          top: 0px;
+          right: 0px;
+          background: none;
+          border: none;
+          color: black;
+          font-size: 18px;
+          cursor: pointer;
+          z-index: 10;
+          padding: 0;
         }
     </style>
 </head>
@@ -171,6 +203,8 @@
         <a href="#" onclick="showSection('cameras')">Камеры</a>
         <a href="#" onclick="showSection('sensors')">Сенсоры</a>
         <a href="#" onclick="showSection('addsensors')">Добавить сенсоры</a>
+        <a href="#" onclick="showSection('addcamera')">Добавить камеру</a>
+        <a href="#" onclick="showSection('faq')">FAQ</a>
         <a href="/logout">Выход</a>
     </div>
     <div class="content">
@@ -205,11 +239,21 @@
         </div>
         <div id="cameras" class="content-section" style="display: none;">
             <h2>Камеры</h2>
-            <div>
+            <!--<div>
                 <img src="/video" alt="Camera 1" class="img-fluid" style="max-width: 400px;">
                 <button onclick="toggleLED(1)" class="btn btn-primary">LED ON</button>
                 <button onclick="toggleLED(0)" class="btn btn-danger">LED OFF</button>
-            </div>
+            </div>-->
+            <div id="camera-container" style="display: flex; flex-wrap: wrap; gap: 20px;"></div>
+        </div>
+        <div id="addcamera" class="content-section" style="display: none;">
+          <h2>Добавить камеру</h2>
+          <form id="add-camera-form">
+            <input type="text" id="camera-name" placeholder="Имя камеры" required>
+            <input type="text" id="camera-url" placeholder="Ссылка на камеру (URL)" required>
+            <button type="submit">Добавить</button>
+          </form>
+          <div id="add-camera-message" style="margin-top: 10px; color: green;"></div>
         </div>
         <div id="sensors" class="content-section" style="display: none;">
             <h2>Сенсоры</i></i></h2>
@@ -227,73 +271,173 @@
               <input type="text" id="sensor-name" placeholder="Имя" required>
               <input type="text" id="sensor-url" placeholder="Url" required>
               <select id="sensor-type" required>
-                <option value="tandh">Датчик температуры и влажности</option>
-                <option value="water">Датчик воды</option>
+                <option value="tandh">Датчик температуры и влажности(DHT11)</option>
+                <option value="water">Датчик воды(HW-038)</option>
               </select>
               <button type="submit">Добавить</button>
             </form>
             <div id="add-sensor-message" style="color: green; margin-top: 10px;"></div>
         </div>
+        <div id="faq" class="content-section">
+                     <!-- Навигация по разделам -->
+          <nav style="width: 200px; border-right: 1px solid #ccc; position: absolute">
+            <h5>Разделы</h5>
+            <ul style="list-style: none; padding-left: 0;">
+              <li><a href="#faq-system" style="color: inherit; text-decoration: none;">Что умеет система?</a></li>
+              <li><a href="#faq-add-sensor" style="color: inherit; text-decoration: none;">Как добавить сенсор?</a></li>
+              <li><a href="#faq-data-format" style="color: inherit; text-decoration: none;">Формат данных</a></li>
+              <li><a href="#faq-dht-code" style="color: inherit; text-decoration: none;">Пример кода DHT11</a></li>
+              <li><a href="#faq-add-type" style="color: inherit; text-decoration: none;">Новый тип сенсора</a></li>
+              <li><a href="#faq-remote" style="color: inherit; text-decoration: none;">Удалённый доступ</a></li>
+              <li><a href="#faq-session" style="color: inherit; text-decoration: none;">Ошибка Invalid session</a></li>
+            </ul>
+          </nav>
+        
+          <!-- Основной текст FAQ -->
+          <div style="max-width: 800px; margin: 0 auto; text-align: justify;">
+            <h1>FAQ — Часто задаваемые вопросы</h1>
+        
+            <h3 id="faq-system">Что умеет система?</h3>
+            <ul>
+              <li>Просмотр видеопотока с камер</li>
+              <li>Отображение температуры и влажности в реальном времени</li>
+              <li>Оповещения о протечке воды</li>
+              <li>Управление освещением через ESP32-CAM</li>
+            </ul>
+        
+            <h3 id="faq-add-sensor">Как добавить новый сенсор?</h3>
+            <ol>
+              <li>Перейдите во вкладку <strong>Добавить сенсоры</strong></li>
+              <li>Заполните <em>имя</em>, <em>URL</em> и <em>тип датчика</em></li>
+              <li>Нажмите <strong>Добавить</strong></li>
+            </ol>
+        
+            <h3 id="faq-data-format">Как работает передача данных?</h3>
+            <p>ESP8266 или ESP32 должен отправлять JSON по указанному URL. Пример:</p>
+            <pre>{
+          "temperature": 22.5,
+          "humidity": 60
+        }</pre>
+        
+            <h3 id="faq-dht-code">Пример кода для DHT11 (ESP8266)</h3>
+            <pre>
+        #include &lt;ESP8266WiFi.h&gt;
+        #include &lt;DHT.h&gt;
+        #include &lt;ESP8266WebServer.h&gt;
+        
+        #define DHTPIN D4
+        #define DHTTYPE DHT11
+        DHT dht(DHTPIN, DHTTYPE);
+        ESP8266WebServer server(80);
+        
+        void handleSensor() {
+          float temp = dht.readTemperature();
+          float hum = dht.readHumidity();
+          String json = "{\"temperature\": " + String(temp) + ", \"humidity\": " + String(hum) + "}";
+          server.send(200, "application/json", json);
+        }
+            </pre>
+        
+            <h3 id="faq-add-type">Как добавить поддержку нового типа датчика?</h3>
+                <p>Чтобы система распознавала и отображала новый тип датчика, необходимо выполнить три простых шага:</p>
+                
+                <ol>
+                  <li><strong>Добавьте обработку типа в <code>/api/sensors</code> (FastAPI)</strong><br>
+                    Перейдите в <code>main.py</code> и найдите функцию <code>@app.get("/api/sensors")</code>. Добавьте новый <code>elif</code>-блок, например для типа <code>gas</code>:
+                    <pre><code class="language-python">elif type_ == 'gas':
+                    try:
+                        r = requests.get(url, timeout=10)
+                        data = r.json()
+                        all_sensors.append({
+                            "name": name,
+                            "type": "gas",
+                            "value": data.get("gas_level")
+                        })
+                    except Exception:
+                        all_sensors.append({
+                            "name": name,
+                            "type": "gas",
+                            "value": None
+                        })</code></pre>
+                    Это позволит API считывать и отдавать данные о газе.
+                  </li>
+                
+                  <li><strong>Допишите отрисовку в <code>main.js</code></strong><br>
+                    Внутри функции <code>renderSensors(data)</code> добавьте обработку нового типа:
+                    <pre><code class="language-js">if (type === "gas") {
+                  const value = sensor.value;
+                  const status = value !== null ? `${value} ppm` : 'Ошибка';
+                
+                  block.innerHTML = `
+                    &lt;div class="sensor-name"&gt;${name}
+                      &lt;button class="delete-button" onclick="deleteSensor('${name}')"&gt;&times;&lt;/button&gt;
+                    &lt;/div&gt;
+                    &lt;div class="gas-status"&gt;
+                      &lt;i class="fa-solid fa-wind"&gt;&lt;/i&gt;
+                      &lt;div class="status-text"&gt;${status}&lt;/div&gt;
+                    &lt;/div&gt;
+                  `;
+                }</code></pre>
+                    <p>Также добавьте стиль в CSS:</p>
+                    <pre><code class="language-css">.gas-status {
+                  font-size: 18px;
+                  color: #6c757d;
+                  margin-top: 10px;
+                  text-align: center;
+                }</code></pre>
+                  </li>
+                
+                  <li><strong>Добавьте тип в <code>&lt;select&gt;</code> при добавлении сенсора</strong><br>
+                    В HTML в форме добавления сенсора допишите новый пункт:
+                    <pre><code class="language-html">&lt;select id="sensor-type" required&gt;
+                  &lt;option value="tandh"&gt;Датчик температуры и влажности&lt;/option&gt;
+                  &lt;option value="water"&gt;Датчик воды&lt;/option&gt;
+                  &lt;option value="gas"&gt;Датчик газа&lt;/option&gt; &lt;!-- Новый тип --&gt;
+                &lt;/select&gt;</code></pre>
+                  </li>
+                </ol>
+                
+                <p><strong>После выполнения этих шагов система:</strong></p>
+                <ul>
+                  <li>примет новый тип данных,</li>
+                  <li>корректно его визуализирует,</li>
+                  <li>позволит выбрать его при добавлении сенсора.</li>
+                </ul>
+        
+            <h3 id="faq-remote">Как подключиться удалённо?</h3>
+            <p>Используйте <strong>PiVPN</strong> — безопасное подключение без проброса портов, с ограничением доступа по устройствам.</p>
+        
+            <h3 id="faq-session">Что делать при ошибке Invalid session?</h3>
+            <ul>
+              <li>Перезагрузите страницу или контейнер Docker</li>
+              <li>Проверьте, сохранены ли cookies и нет ли повреждений в токене</li>
+              <li>Не используйте нестандартные символы в логинах</li>
+            </ul>
+          </div>          </div>
+
     </div>
+    <div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content text-center">
+          <div class="modal-header">
+            <h5 class="modal-title" id="cameraModalLabel">Камера</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+          </div>
+          <div class="modal-body">
+            <img id="modalCameraImage" src="" class="img-fluid mb-3" style="max-height: 500px;" />
+            <div>
+              <button class="btn btn-success" onclick="toggleLEDModal(1)">LED ON</button>
+              <button class="btn btn-danger" onclick="toggleLEDModal(0)">LED OFF</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 <script>
-    const ctx = document.getElementById('sensorChart').getContext('2d');
-    const sensorChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: [],  // Timestamps
-            datasets: [
-                {
-                    label: 'Temperature (°C)',
-                    data: [],
-                    borderColor: 'red',
-                    fill: false
-                },
-                {
-                    label: 'Humidity (%)',
-                    data: [],
-                    borderColor: 'blue',
-                    fill: false
-                }
-            ]
-        },
-        options: {
-            scales: {
-                x: {
-                    title: { display: true, text: 'Time' }
-                },
-                y: {
-                    beginAtZero: true
-                }
-            }
-        }
-    });
-
-    function fetchAndUpdate() {
-        fetch('/api/sensors')
-            .then(res => res.json())
-            .then(data => {
-                const now = new Date().toLocaleTimeString();
-                const temp = data[0]?.temperature ?? null;
-                const hum = data[0]?.humidity ?? null;
-
-                if (sensorChart.data.labels.length > 20) {
-                    sensorChart.data.labels.shift();
-                    sensorChart.data.datasets[0].data.shift();
-                    sensorChart.data.datasets[1].data.shift();
-                }
-
-                sensorChart.data.labels.push(now);
-                sensorChart.data.datasets[0].data.push(temp);
-                sensorChart.data.datasets[1].data.push(hum);
-                sensorChart.update();
-            })
-            .catch(err => console.error("Sensor fetch error:", err));
-    }
-
-    fetchAndUpdate();               // initial load
-    setInterval(fetchAndUpdate, 10000); // every 10s
+   
 </script>
 
 

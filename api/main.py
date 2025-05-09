@@ -257,23 +257,78 @@ def log_sensor_data():
 @app.post("/control_led")
 async def control_led(request: Request):
     try:
-        data = await request.json()  # Ждем JSON
+        data = await request.json()
         state = data.get("state")
+        ip = data.get("ip", "192.168.31.91")  # по умолчанию — первая камера
 
-        if state is None:
-            return JSONResponse(content={"message": "Ошибка: отсутствует state"}, status_code=400)
+        if state is None or not ip:
+            return JSONResponse(content={"message": "Ошибка: отсутствует параметр"}, status_code=400)
 
-        response = requests.get("http://192.168.31.92/control", params={"state": state})
+        response = requests.get(f"http://{ip}/control", params={"state": state})
 
         if response.status_code == 200:
             return JSONResponse(content={"message": "LED state updated"}, status_code=200)
         else:
-            return JSONResponse(content={"message": "Ошибка при отправке команды на ESP32"}, status_code=500)
+            return JSONResponse(content={"message": "Ошибка при отправке команды на ESP"}, status_code=500)
 
     except Exception as e:
         return JSONResponse(content={"message": f"Ошибка: {str(e)}"}, status_code=500)
 #
-        
+
+@app.delete("/delete_camera/{camera_name}")
+def delete_camera(camera_name: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM cameras WHERE name = ?", (camera_name,))
+    conn.commit()
+    conn.close()
+    return {"message": "Camera deleted"}
+
+@app.post("/addcamera")
+async def add_camera(request: Request):
+    data = await request.json()
+    name = data.get("name")
+    url = data.get("url")
+
+    if not all([name, url]):
+        return JSONResponse(status_code=400, content={"message": "Недостаточно данных"})
+
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT INTO cameras (name, camurl) VALUES (?, ?)", (name, url))
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return JSONResponse(status_code=400, content={"message": "Камера уже существует"})
+    finally:
+        conn.close()
+
+    return {"message": "Камера добавлена"}
+
+@app.get("/api/cameras")
+def get_cameras():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, camurl FROM cameras")
+    cameras = cursor.fetchall()
+    conn.close()
+    return [{"name": row[0], "url": row[1]} for row in cameras]
+
+@app.get("/video_stream")
+def video_stream(url: str):
+    cap = cv2.VideoCapture(url)
+
+    def generate():
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            _, buffer = cv2.imencode(".jpg", frame)
+            yield (b"--frame\r\n"
+                   b"Content-Type: image/jpeg\r\n\r\n" + buffer.tobytes() + b"\r\n")
+    return StreamingResponse(generate(), media_type="multipart/x-mixed-replace; boundary=frame")
+
 @app.get("/video")
 def video_feed():
     esp32_url = "http://192.168.31.92/mjpeg/1"
