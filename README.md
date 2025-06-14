@@ -27,7 +27,7 @@ cd [Ваша директория]
 
 3. Запуск проекта
 ```
-docker compose up --build
+docker compose up --build -d
 ```
 Веб-интерфейс будет доступен по адресу: http://<IP - адрес вашей Raspberry pi>:5000
 
